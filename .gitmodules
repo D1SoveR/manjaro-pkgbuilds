@@ -1,0 +1,3 @@
+[submodule "manjaro-kernel-bundler"]
+	path = manjaro-kernel-bundler
+	url = git@github.com:D1SoveR/manjaro-kernel-bundler.git
