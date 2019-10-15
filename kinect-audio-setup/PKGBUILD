@@ -1,0 +1,38 @@
+# This is an example PKGBUILD file. Use this as a start to creating your own,
+# and remove these comments. For more information, see 'man PKGBUILD'.
+# NOTE: Please fill out the license field for your package! If it is unknown,
+# then please put 'unknown'.
+
+# Maintainer: Mikołaj "D1SoveR" Banasik <d1sover@gmail.com>
+pkgname="kinect-audio-setup"
+pkgver="0.5"
+pkgrel=1
+epoch=
+pkgdesc="UAC firmware for Microsoft Kinect sensor audio setup"
+arch=("x86_64" "i686")
+url="https://git.ao2.it/kinect-audio-setup.git"
+license=("WTFPL" "BSD")
+depends=("wget" "p7zip")
+makedepends=("make" "gcc")
+provides=()
+conflicts=()
+replaces=()
+backup=()
+options=()
+install="${pkgname}.install"
+changelog=
+source=("git+git://git.ao2.it/kinect-audio-setup.git#tag=v${pkgver}"
+        "55-kinect-audio.rules")
+md5sums=("SKIP"
+         "45ca82e8cd1366e03205d78afa154be2")
+
+build() {
+    cd "${pkgname}/kinect_upload_fw"
+    make kinect_upload_fw
+}
+
+package() {
+    install -Dm755 "${srcdir}/${pkgname}/kinect_upload_fw/kinect_upload_fw" "${pkgdir}/usr/bin/kinect_upload_fw"
+    install -Dm755 "${srcdir}/${pkgname}/kinect_fetch_fw" "${pkgdir}/usr/bin/kinect_fetch_fw"
+    install -Dm644 "${srcdir}/55-kinect-audio.rules" "${pkgdir}/usr/lib/udev/rules.d/55-kinect-audio.rules"
+}
