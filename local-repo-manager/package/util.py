@@ -33,18 +33,6 @@ def bind_unmount(target):
         errno = ctypes.get_errno()
         raise OSError(errno, f"Error umounting {target}: {os.strerror(errno)}")
 
-def get_all_mountpoints(*paths):
-
-    result = ["/"]
-    for path in paths:
-        if os.path.isfile(path):
-            path = os.path.dirname(path)
-        while path != "/":
-            if os.path.ismount(path):
-                result.append(path)
-            path = os.path.dirname(path)
-    return tuple(sorted(set(result), key=lambda x: 0 if x == "/" else len(x.split(os.sep))))
-
 class TempDirectory:
 
     """

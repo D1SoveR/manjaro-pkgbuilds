@@ -8,6 +8,8 @@ import sys
 from util import TempDirectory
 
 REPO_ADDRESS_GIT = re.compile(r'^(?:ssh|https?)://')
+LOCAL_USER_UID = 1000
+RUN_AS_USER = ["/usr/bin/sudo", "-E", "-u", pwd.getpwuid(LOCAL_USER_UID).pw_name]
 
 def get_packages(packages_dir):
 
@@ -35,53 +37,80 @@ def get_repository(package_dir):
 
 	return None
 
+def get_build_artifacts(directory):
+
+	"""
+	Helper method that returns the list of all .tar.xz files in given directory,
+	as full absolute paths.
+	It's used several places to provide arguments to commands that run on all the packages.
+	"""
+
+	artifacts = filter(lambda x: x.endswith(".tar.xz"), os.listdir(directory))
+	full_paths = map(lambda x: os.path.join(directory, x), artifacts)
+	return list(full_paths)
+
 def run_within_container(command, *bind_dirs, extra_params=None, log_output=None):
 
 	"""
+	This function is used to run the given command inside of temporary nspawn container.
+	Given the command, list of writable directories to bind between host and container,
+	and any extra parameters (like network configuration, coming from the config),
+	it executes the `systemd-nspawn` command with the host system as read-only root.
 
+	It's used primarily to start the local repository manager with "build" action,
+	which kicks off the actual build process.
+
+	The output can be directed to something else than standard output using log_output argument.
 	"""
 
 	with TempDirectory("/") as container_base:
 
-		args = [
-            "systemd-nspawn",
-            "--quiet",
-            f"--directory={container_base}",
-            "--volatile=overlay",
-            "--as-pid2",
-		]
+		args = ["systemd-nspawn", "--quiet", f"--directory={container_base}", "--volatile=overlay", "--as-pid2"]
 		args.extend("--bind={0}".format(os.path.abspath(directory)) for directory in bind_dirs)
-
 		if extra_params:
 			args.extend(extra_params.split(" "))
+		args.extend(command)
 
-		if type(command) == str:
-			args.append(command)
-		else:
-			args.extend(command)
+		subprocess.run(args, check=True, stdout=log_output, stderr=subprocess.STDOUT)
 
-		subprocess.run(args, check=True, capture_output=False, stdout=log_output, stderr=subprocess.STDOUT)
+def build_package(package_dir, destination_dir):
 
-def prepare_and_build(package_dir, destination_dir):
+	"""
+	This function performs the bulk of the work in the process of building a package.
+	Given the location of scripts to set up package build and the destination to which the bundled artifact should be written,
+	it creates temporary build directories, runs the prepare scripts, then checks the package version. If the one in the build dir
+	is newer than what we already have in the local repository, building proceeds,.
+
+	The package is also installed locally (in the container), in case any other packages have it as make dependency.
+	"""
 
 	temp_env = dict(os.environ)
-	temp_env["prepare_dir"] = package_dir
-	temp_env["PKGDEST"] = destination_dir
-	username = pwd.getpwuid(1000).pw_name
-	run_as_user = ["/usr/bin/sudo", "-E", "-u", username]
+	temp_env["prepare_dir"] = package_dir  # This env is used by prepare.sh scripts for reference to directory with all the patches
+	temp_env["PKGDEST"] = destination_dir  # This env is used by makepkg to determine where to write the bundled build artifacts
 
 	with TempDirectory() as build_dir:
 
-		os.chown(destination_dir, 1000, 1000)
-		os.chown(build_dir, 1000, 1000)
+		# We ensure both the build and artifact destination directories
+		# can be written to by local user (since we can't run makepkg with root)
+		os.chown(destination_dir, LOCAL_USER_UID, LOCAL_USER_UID)
+		os.chown(build_dir, LOCAL_USER_UID, LOCAL_USER_UID)
 
 		print("Preparing the package for build...")
-		subprocess.run(run_as_user + ["/bin/bash", os.path.join(package_dir, "prepare.sh")], cwd=build_dir, env=temp_env, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT)
+		subprocess.run(
+			RUN_AS_USER + ["/bin/bash", os.path.join(package_dir, "prepare.sh")],
+			cwd=build_dir, env=temp_env, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT
+		)
+
+		#print("Checking package version (will not build if older or same as current)...")
 
 		print("Building the package...")
-		subprocess.run(run_as_user + ["/usr/bin/makepkg", "-sc"], cwd=build_dir, env=temp_env, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT)
+		subprocess.run(
+			RUN_AS_USER + ["/usr/bin/makepkg", "-sc"],
+			cwd=build_dir, env=temp_env, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT
+		)
 
 		print("Installing the new packages in the container...")
-		install_args = ["/usr/bin/pacman", "--needed", "--noconfirm", "-U"]
-		install_args.extend(filter(lambda x: x.endswith(".tar.xz"), os.listdir(destination_dir)))
-		subprocess.run(install_args, cwd=destination_dir, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT)
+		subprocess.run(
+			["/usr/bin/pacman", "--needed", "--noconfirm", "-U"] + get_build_artifacts(destination_dir),
+			cwd=destination_dir, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT
+		)

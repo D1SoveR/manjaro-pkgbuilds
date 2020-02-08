@@ -5,10 +5,12 @@ if __name__ != "__main__":
 import argparse
 import os.path
 import sys
+import traceback
 
+from log import LogToFile, LogToStdout
 from config import parse_config, on_root_mount
-from build import get_packages, run_within_container, prepare_and_build
-from util import TempDirectory, get_all_mountpoints
+from build import get_packages, get_build_artifacts, run_within_container, build_package
+from util import TempDirectory
 
 import subprocess
 
@@ -115,8 +117,6 @@ elif args.action == "list":
 # SCHEDULING UPDATE OF ALL THE PACKAGES
 elif args.action == "update":
 
-	if args.logging:
-		raise RuntimeError("Logging not yet implemented")
 	print("Setting up container to build new packages in...")
 	with TempDirectory() as pkgdest:
 
@@ -125,16 +125,36 @@ elif args.action == "update":
 			"--config", args.config_file, "build", "--pkgdest", pkgdest
 		]
 
-		run_within_container(args, pkgdest, extra_params=config["nspawn_params"], log_output=sys.stdout)
+		try:
 
-		print("")
-		print("Build complete, temporary container terminated")
-		print("Adding packages to local repository...")
+			with (LogToFile(config["log_dir"]) if args.logging else LogToStdout()) as (fp, log_dest):
+				print(f"(build process will be logged to {log_dest})\n")
+				try:
+					run_within_container(args, pkgdest, extra_params=config["nspawn_params"], log_output=fp)
+				except Exception as e:
+					traceback.print_exception(*sys.exc_info(), file=fp)
+					raise e
 
-		args = ["/usr/bin/repo-add", "--new", config["repository_file"]]
-		args.extend(map(lambda x: os.path.join(pkgdest, x), filter(lambda x: x.endswith(".tar.xz"), os.listdir(pkgdest))))
-		print(f"ARGS: {args}")
-		subprocess.run(args, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT)
+			print("\nBuild complete, temporary container terminated")
+
+			build_artifacts = get_build_artifacts(pkgdest)
+			if not len(build_artifacts):
+				print("No new packages have been built")
+			else:
+				print("Adding packages to local repository...")
+
+				subprocess.run(
+					["/usr/bin/repo-add", "--new", config["repository_file"]] + build_artifacts,
+					check=True, stdout=sys.stdout, stderr=sys.stderr
+				)
+
+				print("New packages added to the repository")
+				print("Run pacman -Syyu to install them")
+
+		except Exception as e:
+			exc = RuntimeError("Build process has failed due to unexpected errors\nCheck the build log to investigate the cause of the issue")
+			exc.with_traceback(sys.exc_info()[2])
+			raise exc
 
 elif args.action == "build":
 
@@ -148,4 +168,4 @@ elif args.action == "build":
 	print("")
 
 	for item in packages_to_build:
-		prepare_and_build(os.path.join(config["packages_dir"], item), args.pkgdest)
+		build_package(os.path.join(config["packages_dir"], item), args.pkgdest)
