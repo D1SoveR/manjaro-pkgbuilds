@@ -1,6 +1,15 @@
 import configparser
 import os
 import os.path
+import sys
+
+def on_root_mount(path):
+
+	while path != "/":
+		if os.path.ismount(path):
+			return False
+		path = os.path.dirname(path)
+	return True
 
 def parse_config(config_file):
 

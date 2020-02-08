@@ -6,8 +6,11 @@ import argparse
 import os.path
 import sys
 
-from config import parse_config
-from build import get_packages
+from config import parse_config, on_root_mount
+from build import get_packages, run_within_container, prepare_and_build
+from util import TempDirectory, get_all_mountpoints
+
+import subprocess
 
 # OVERRIDING EXCEPTION HANDLER
 # ============================
@@ -32,19 +35,38 @@ parser = argparse.ArgumentParser(
 	formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument(
-	"action",
-	metavar="ACTION",
-	choices=["config", "list", "list-existing", "update", "build"],
-	help="What should the manager do"
-)
-parser.add_argument(
 	"-c", "--config",
 	required=False,
-	metavar="CONFIG-FILE-LOCATION",
 	default="/etc/local-repo.conf",
 	type=os.path.abspath,
 	help="Alternative location for the manager configuration file",
 	dest="config_file"
+)
+
+subparsers = parser.add_subparsers(
+	title="action",
+	dest="action",
+	required=True
+)
+subparsers.add_parser("config", help="Shows all of the current configuration options")
+subparsers.add_parser("list", help="Lists all of the packages handled by this manager")
+
+action_update = subparsers.add_parser("update", help="Schedules update of all the packages")
+action_update.add_argument(
+	"--no-log",
+	action="store_false",
+	dest="logging",
+	required=False,
+	help="If provided, outputs the logs of the build process to terminal instead of log file"
+)
+
+action_build = subparsers.add_parser("build", help="Conducts the actual build process")
+action_build.add_argument(
+	"--pkgdest",
+	required=True,
+	type=os.path.abspath,
+	help="Location to which the built packages will be moved",
+	dest="pkgdest"
 )
 
 # ARGUMENT PARSING AND VALIDATION
@@ -53,6 +75,12 @@ parser.add_argument(
 # then the configuration file is parsed (validation of its options done by the method).
 args = parser.parse_args()
 config = parse_config(args.config_file)
+
+if args.action != "build":
+	if not on_root_mount(os.path.abspath(sys.argv[0])):
+		raise RuntimeError("Manager executable needs to be on the root partition")
+	if not on_root_mount(config["packages_dir"]):
+		raise RuntimeError("Packages directory needs to be on the root partition")
 
 # HANDLING ACTIONS
 # ================
@@ -83,3 +111,41 @@ elif args.action == "list":
 		for name, repo in packages.items():
 			print("  {0}: ".format(name).ljust(max_key_length + 4), repo if repo else "[NO REPOSITORY IDENTIFIED]")
 		print("")
+
+# SCHEDULING UPDATE OF ALL THE PACKAGES
+elif args.action == "update":
+
+	if args.logging:
+		raise RuntimeError("Logging not yet implemented")
+	print("Setting up container to build new packages in...")
+	with TempDirectory() as pkgdest:
+
+		args = [
+			"/usr/bin/env", "python3", os.path.abspath(sys.argv[0]),
+			"--config", args.config_file, "build", "--pkgdest", pkgdest
+		]
+
+		run_within_container(args, pkgdest, extra_params=config["nspawn_params"], log_output=sys.stdout)
+
+		print("")
+		print("Build complete, temporary container terminated")
+		print("Adding packages to local repository...")
+
+		args = ["/usr/bin/repo-add", "--new", config["repository_file"]]
+		args.extend(map(lambda x: os.path.join(pkgdest, x), filter(lambda x: x.endswith(".tar.xz"), os.listdir(pkgdest))))
+		print(f"ARGS: {args}")
+		subprocess.run(args, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT)
+
+elif args.action == "build":
+
+	print("Configuring internal network connection...")
+	subprocess.run(["/usr/bin/dhclient", "host0"], check=True, stdout=sys.stdout, stderr=subprocess.STDOUT)
+
+	packages_to_build = tuple(key for (key, item) in get_packages(config["packages_dir"]).items() if item)
+	print("Will build following packages:")
+	for item in packages_to_build:
+		print(f"* {item}")
+	print("")
+
+	for item in packages_to_build:
+		prepare_and_build(os.path.join(config["packages_dir"], item), args.pkgdest)
