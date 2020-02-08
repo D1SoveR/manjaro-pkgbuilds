@@ -1,0 +1,82 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index f9f147c..4128a8e 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -6,9 +6,9 @@
+ # Maintainer: Jonathon Fernyhough (i686) <jonathon@manjaro.org>
+ # Contributor: Helmut Stult <helmut[at]manjaro[dot]org>
+ 
+-pkgbase=linux55
+-pkgname=('linux55' 'linux55-headers')
+-_kernelname=-MANJARO
++pkgbase=linux55-d1s
++pkgname=("${pkgbase}" "${pkgbase}-headers")
++_kernelname=-D1S
+ _basekernel=5.5
+ _basever=55
+ _aufs=20200127
+@@ -57,7 +57,9 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
+         '0010-bootsplash.patch'
+         '0011-bootsplash.patch'
+         '0012-bootsplash.patch'
+-        '0013-bootsplash.patch')
++        '0013-bootsplash.patch'
++        'zfs-fix.patch'
++        'fsync.patch')
+ sha256sums=('a6fbd4ee903c128367892c2393ee0d9657b6ed3ea90016d4dc6f1f6da20b2330'
+             '07cbd21a049b0bf5a96d7e0b8272db8e53e9947f0eff06fa2a765bb3b34bc8fa'
+             '3968c459d5818b1817d1cde19aa0708b0b2d1b52339fcb31a5d4c537d51c8b49'
+@@ -92,7 +94,9 @@ sha256sums=('a6fbd4ee903c128367892c2393ee0d9657b6ed3ea90016d4dc6f1f6da20b2330'
+             'e9f22cbb542591087d2d66dc6dc912b1434330ba3cd13d2df741d869a2c31e89'
+             '27471eee564ca3149dd271b0817719b5565a9594dc4d884fe3dc51a5f03832bc'
+             '60e295601e4fb33d9bf65f198c54c7eb07c0d1e91e2ad1e0dd6cd6e142cb266d'
+-            '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef')
++            '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef'
++            '5d55bb51c3cade17dde2fec87a385604780afd117dbd01dfbb4b1b83f1ae2660'
++            '2d9260b80b43bbd605cf420d6bd53aa7262103dfd77196ba590ece5600b6dc0d')
+ prepare() {
+   cd "${srcdir}/linux-${_basekernel}"
+ 
+@@ -140,6 +144,10 @@ prepare() {
+   # use git-apply to add binary files
+   git apply -p1 < "${srcdir}/0013-bootsplash.patch"
+ 
++  # apply ZFS fix and fsync patches
++  patch -Np1 -i "${srcdir}/zfs-fix.patch"
++  patch -Np1 -i "${srcdir}/fsync.patch"
++
+   # add aufs5 support
+   patch -Np1 -i "${srcdir}/aufs5.x-rcN-${_aufs}.patch"
+   patch -Np1 -i "${srcdir}/aufs5-base.patch"
+@@ -191,7 +199,7 @@ build() {
+   make ${MAKEFLAGS} LOCALVERSION= bzImage modules
+ }
+ 
+-package_linux55() {
++packbase() {
+   pkgdesc="The ${pkgbase/linux/Linux} kernel and modules"
+   depends=('coreutils' 'linux-firmware' 'kmod' 'mkinitcpio>=27')
+   optdepends=('crda: to set the correct wireless channels of your country')
+@@ -240,7 +248,7 @@ package_linux55() {
+   install -Dt "${pkgdir}/usr/lib/modules/${_kernver}/build" -m644 vmlinux
+ }
+ 
+-package_linux55-headers() {
++packheaders() {
+   pkgdesc="Header files and scripts for building modules for ${pkgbase/linux/Linux} kernel"
+   provides=("linux-headers=$pkgver")
+ 
+@@ -312,4 +320,13 @@ package_linux55-headers() {
+   done < <(find "${_builddir}/scripts" -type f -perm -u+w -print0 2>/dev/null)
+ }
+ 
++source /dev/stdin <<EOF
++package_${pkgbase}() {
++  packbase
++}
++package_${pkgbase}-headers() {
++  packheaders
++}
++EOF
++
+ _server=cx51

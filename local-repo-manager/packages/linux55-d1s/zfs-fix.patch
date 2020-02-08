@@ -1,0 +1,44 @@
+diff --git a/arch/x86/kernel/fpu/core.c b/arch/x86/kernel/fpu/core.c
+index 12c708409..352538b3b 100644
+--- a/arch/x86/kernel/fpu/core.c
++++ b/arch/x86/kernel/fpu/core.c
+@@ -102,7 +102,7 @@ void kernel_fpu_begin(void)
+ 	}
+ 	__cpu_invalidate_fpregs_state();
+ }
+-EXPORT_SYMBOL_GPL(kernel_fpu_begin);
++EXPORT_SYMBOL(kernel_fpu_begin);
+ 
+ void kernel_fpu_end(void)
+ {
+@@ -111,7 +111,7 @@ void kernel_fpu_end(void)
+ 	this_cpu_write(in_kernel_fpu, false);
+ 	preempt_enable();
+ }
+-EXPORT_SYMBOL_GPL(kernel_fpu_end);
++EXPORT_SYMBOL(kernel_fpu_end);
+ 
+ /*
+  * Save the FPU state (mark it for reload if necessary):
+diff --git a/kernel/rcu/tree_plugin.h b/kernel/rcu/tree_plugin.h
+index fa08d55f7..360428642 100644
+--- a/kernel/rcu/tree_plugin.h
++++ b/kernel/rcu/tree_plugin.h
+@@ -360,7 +360,7 @@ void __rcu_read_lock(void)
+ 		WARN_ON_ONCE(current->rcu_read_lock_nesting > RCU_NEST_PMAX);
+ 	barrier();  /* critical section after entry code. */
+ }
+-EXPORT_SYMBOL_GPL(__rcu_read_lock);
++EXPORT_SYMBOL(__rcu_read_lock);
+ 
+ /*
+  * Preemptible RCU implementation for rcu_read_unlock().
+@@ -390,7 +390,7 @@ void __rcu_read_unlock(void)
+ 		WARN_ON_ONCE(rrln < 0 && rrln > RCU_NEST_NMAX);
+ 	}
+ }
+-EXPORT_SYMBOL_GPL(__rcu_read_unlock);
++EXPORT_SYMBOL(__rcu_read_unlock);
+ 
+ /*
+  * Advance a ->blkd_tasks-list pointer to the next entry, instead

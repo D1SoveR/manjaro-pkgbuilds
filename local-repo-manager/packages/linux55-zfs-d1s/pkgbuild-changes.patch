@@ -1,0 +1,34 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 4c67853..c3a3e14 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -5,8 +5,8 @@
+ # Maintainer: Philip Müller <philm@manjaro.org>
+ # Contributor: Helmut Stult <helmut[at]manjaro[dot]org>
+ 
+-_linuxprefix=linux55
+-_extramodules=extramodules-5.5-MANJARO
++_linuxprefix=linux55-d1s
++_extramodules=extramodules-5.5-D1S
+ pkgbase=$_linuxprefix-spl_zfs
+ pkgname=("$_linuxprefix-zfs")
+ pkgver=0.8.3
+@@ -44,7 +44,7 @@ build() {
+   make
+ }
+ 
+-package_linux55-zfs(){
++packzfs(){
+   pkgdesc='Kernel modules for the Zettabyte File System.'
+   provides=("zfs=$pkgver")
+   depends+=("zfs-utils=${pkgver}")
+@@ -56,3 +56,9 @@ package_linux55-zfs(){
+   find "$pkgdir" -name '*.ko' -exec gzip -9 {} +
+   sed -i -e "s/EXTRAMODULES='.*'/EXTRAMODULES='$_extramodules'/" "$startdir/install"
+ }
++
++source /dev/stdin <<EOF
++package_${pkgname}() {
++  packzfs
++}
++EOF
