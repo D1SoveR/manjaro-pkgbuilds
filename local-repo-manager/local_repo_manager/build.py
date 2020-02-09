@@ -8,6 +8,7 @@ import sys
 from repo import is_newer
 from util import TempDirectory
 
+MATCH_SRCINFO = re.compile(r'^\s*(epoch|pkgver|pkgrel|pkgname) = (.+)$')
 REPO_ADDRESS_GIT = re.compile(r'^(?:ssh|https?)://')
 LOCAL_USER_UID = 1000
 RUN_AS_USER = ["/usr/bin/sudo", "-E", "-u", pwd.getpwuid(LOCAL_USER_UID).pw_name]
@@ -49,8 +50,6 @@ def get_build_artifacts(directory):
 	artifacts = filter(lambda x: x.endswith(".tar.xz"), os.listdir(directory))
 	full_paths = map(lambda x: os.path.join(directory, x), artifacts)
 	return list(full_paths)
-
-MATCH_SRCINFO = re.compile(r'^\s*(epoch|pkgver|pkgrel|pkgname) = (.+)$')
 
 def get_packages_from_srcinfo(srcinfo):
 
