@@ -4,6 +4,7 @@ if __name__ != "__main__":
 
 import argparse
 import os.path
+import shutil
 import sys
 import traceback
 
@@ -11,6 +12,7 @@ from log import LogToFile, LogToStdout
 from config import parse_config, on_root_mount
 from build import get_packages, get_build_artifacts, run_within_container, build_package
 from util import TempDirectory
+from repo import get_repo
 
 import subprocess
 
@@ -120,7 +122,7 @@ elif args.action == "update":
 	print("Setting up container to build new packages in...")
 	with TempDirectory() as pkgdest:
 
-		args = [
+		container_args = [
 			"/usr/bin/env", "python3", os.path.abspath(sys.argv[0]),
 			"--config", args.config_file, "build", "--pkgdest", pkgdest
 		]
@@ -130,42 +132,46 @@ elif args.action == "update":
 			with (LogToFile(config["log_dir"]) if args.logging else LogToStdout()) as (fp, log_dest):
 				print(f"(build process will be logged to {log_dest})\n")
 				try:
-					run_within_container(args, pkgdest, extra_params=config["nspawn_params"], log_output=fp)
+					run_within_container(container_args, pkgdest, extra_params=config["nspawn_params"], log_output=fp)
 				except Exception as e:
 					traceback.print_exception(*sys.exc_info(), file=fp)
 					raise e
-
-			print("\nBuild complete, temporary container terminated")
-
-			build_artifacts = get_build_artifacts(pkgdest)
-			if not len(build_artifacts):
-				print("No new packages have been built")
-			else:
-				print("Adding packages to local repository...")
-
-				subprocess.run(
-					["/usr/bin/repo-add", "--new", config["repository_file"]] + build_artifacts,
-					check=True, stdout=sys.stdout, stderr=sys.stderr
-				)
-
-				print("New packages added to the repository")
-				print("Run pacman -Syyu to install them")
 
 		except Exception as e:
 			exc = RuntimeError("Build process has failed due to unexpected errors\nCheck the build log to investigate the cause of the issue")
 			exc.with_traceback(sys.exc_info()[2])
 			raise exc
 
+		print("\nBuild complete, temporary container terminated")
+
+		build_artifacts = get_build_artifacts(pkgdest)
+		if not len(build_artifacts):
+			print("No new packages have been built")
+		else:
+			print("Copying artifacts to local repository directory...")
+			copied_artifacts = [shutil.copy(x, config["repository_dir"]) for x in build_artifacts]
+			print("Adding artifacts to local repository...\n")
+			subprocess.run(
+				["/usr/bin/repo-add", "--new", config["repository_file"]] + copied_artifacts,
+				check=True, stdout=sys.stdout, stderr=sys.stderr
+			)
+
+			print("\nNew packages added to the repository")
+			print("Run pacman -Syyu to install them")
+
 elif args.action == "build":
 
 	print("Configuring internal network connection...")
 	subprocess.run(["/usr/bin/dhclient", "host0"], check=True, stdout=sys.stdout, stderr=subprocess.STDOUT)
 
+	print("Retrieving package info from local repository...")
+	repo = get_repo(config["repository_file"])
+
 	packages_to_build = tuple(key for (key, item) in get_packages(config["packages_dir"]).items() if item)
 	print("Will build following packages:")
 	for item in packages_to_build:
 		print(f"* {item}")
-	print("")
 
 	for item in packages_to_build:
-		build_package(os.path.join(config["packages_dir"], item), args.pkgdest)
+		print(f"\nBUILD FOR {item}\n===========================")
+		build_package(repo, os.path.join(config["packages_dir"], item), args.pkgdest)

@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 
+from repo import is_newer
 from util import TempDirectory
 
 REPO_ADDRESS_GIT = re.compile(r'^(?:ssh|https?)://')
@@ -49,6 +50,29 @@ def get_build_artifacts(directory):
 	full_paths = map(lambda x: os.path.join(directory, x), artifacts)
 	return list(full_paths)
 
+MATCH_SRCINFO = re.compile(r'^\s*(epoch|pkgver|pkgrel|pkgname) = (.+)$')
+
+def get_packages_from_srcinfo(srcinfo):
+
+	version = {}
+	names = []
+
+	for line in srcinfo.splitlines():
+		match = MATCH_SRCINFO.match(line)
+		if match:
+			if match.group(1) == "pkgname":
+				names.append(match.group(2))
+			else:
+				version[match.group(1)] = match.group(2)
+
+	final_version = version["pkgver"]
+	if "pkgrel" in version:
+		final_version += "-" + version["pkgrel"]
+	if "epoch" in version:
+		final_version = version["epoch"] + ":" + final_version
+
+	return dict((name, final_version) for name in names)
+
 def run_within_container(command, *bind_dirs, extra_params=None, log_output=None):
 
 	"""
@@ -73,7 +97,7 @@ def run_within_container(command, *bind_dirs, extra_params=None, log_output=None
 
 		subprocess.run(args, check=True, stdout=log_output, stderr=subprocess.STDOUT)
 
-def build_package(package_dir, destination_dir):
+def build_package(repo, package_dir, destination_dir):
 
 	"""
 	This function performs the bulk of the work in the process of building a package.
@@ -101,7 +125,16 @@ def build_package(package_dir, destination_dir):
 			cwd=build_dir, env=temp_env, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT
 		)
 
-		#print("Checking package version (will not build if older or same as current)...")
+		print("Checking package version (will not build if older or same as current)...")
+		srcinfo = subprocess.run(
+			RUN_AS_USER + ["/usr/bin/makepkg", "--printsrcinfo"],
+			cwd=build_dir, check=True, capture_output=True
+		).stdout.decode("utf8")
+
+		package_versions = get_packages_from_srcinfo(srcinfo)
+		if not any(is_newer(version, repo[name][0]) for name, version in package_versions.items()):
+			print("None of the build artifacts are newer than contents of the local repository, skipping...")
+			return
 
 		print("Building the package...")
 		subprocess.run(
