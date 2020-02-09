@@ -6,11 +6,11 @@ from subprocess import run, STDOUT
 import sys
 import traceback
 
-from build import get_packages, get_build_artifacts, run_within_container, build_package
-from config import parse_arguments, parse_config, on_root_mount
-from log import LogToFile, LogToStdout
-from repo import get_repo
-from util import TempDirectory, custom_exception_handler
+from .build import get_packages, get_build_artifacts, run_within_container, build_package
+from .config import parse_arguments, parse_config, on_root_mount
+from .log import LogToFile, LogToStdout
+from .repo import get_repo
+from .util import TempDirectory, custom_exception_handler
 
 def main():
 
@@ -26,7 +26,7 @@ def main():
 	# ===============================
 	# These two lines obtain the arguments from the command line (validation done by ArgumentParser),
 	# then the configuration file is parsed (validation of its options done by the method).
-	args = parse_arguments(sys.argv)
+	args = parse_arguments(sys.argv[1:])
 	config = parse_config(args.config_file)
 
 	# This bit is needed due to the fact that nspawn container's overlay FS does not span multiple
@@ -170,6 +170,3 @@ def main():
 		for item in packages_to_build:
 			print(f"\nBUILD FOR {item}\n===========================")
 			build_package(repo, os.path.join(config["packages_dir"], item), args.pkgdest)
-
-if __name__ == "__main__":
-	main()

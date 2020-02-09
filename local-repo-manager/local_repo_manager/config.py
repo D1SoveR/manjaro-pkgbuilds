@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from configparser import ConfigParser, ExtendedInterpolation
 import os
 import os.path
@@ -33,7 +33,7 @@ def parse_arguments(args):
 
 	parser = ArgumentParser(
 		description="Program used to manage the local packages repository, built with custom patches",
-		formatter_class=argparse.ArgumentDefaultsHelpFormatter
+		formatter_class=ArgumentDefaultsHelpFormatter
 	)
 	parser.add_argument(
 		"-c", "--config",

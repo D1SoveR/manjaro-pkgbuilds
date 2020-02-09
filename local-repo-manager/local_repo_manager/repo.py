@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import tarfile
 from collections import defaultdict
-from subprocess import run
 from functools import cmp_to_key
+from subprocess import run
+import tarfile
 
 def pacman_ver_compare(versionOne, versionTwo):
 	return int(run(["/usr/bin/vercmp", versionOne, versionTwo], capture_output=True).stdout)

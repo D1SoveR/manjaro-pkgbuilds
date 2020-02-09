@@ -5,8 +5,8 @@ import re
 import subprocess
 import sys
 
-from repo import is_newer
-from util import TempDirectory
+from .repo import is_newer
+from .util import TempDirectory
 
 MATCH_SRCINFO = re.compile(r'^\s*(epoch|pkgver|pkgrel|pkgname) = (.+)$')
 REPO_ADDRESS_GIT = re.compile(r'^(?:ssh|https?)://')
@@ -131,7 +131,7 @@ def build_package(repo, package_dir, destination_dir):
 		).stdout.decode("utf8")
 
 		package_versions = get_packages_from_srcinfo(srcinfo)
-		if not any(is_newer(version, repo[name][0]) for name, version in package_versions.items()):
+		if not any(is_newer(version, repo[name][0] if name in repo else "0.0.0-0") for name, version in package_versions.items()):
 			print("None of the build artifacts are newer than contents of the local repository, skipping...")
 			return
 
