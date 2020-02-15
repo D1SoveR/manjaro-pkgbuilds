@@ -13,7 +13,8 @@ class LogToFile:
 		current_time = datetime.now()
 		log_filename = "build-{0:%Y-%m-%dT%H-%M-%S}.log".format(current_time)
 		self.fp = open(os.path.join(self.log_directory, log_filename), mode="wb")
-		fp.write("BUILD LOG FOR {0:%d %B %Y at %H:%M}\n================================\n\n".format(current_time).encode())
+		self.fp.write("BUILD LOG FOR {0:%d %B %Y at %H:%M}\n================================\n\n".format(current_time).encode())
+		self.fp.flush()
 		return (self.fp, log_filename)
 
 	def __exit__(self, *args):
