@@ -1,0 +1,53 @@
+# Maintainer: Mikołaj Banasik <d1sover@gmail.com>
+
+# Base package info
+pkgname="local-repo-manager"
+pkgver=0.0.1
+pkgrel=1
+pkgdesc="Service capable of taking Manjaro packages, applying local patches and changes on top and building them into local repository."
+url="https://github.com/D1SoveR/manjaro-pkgbuilds"
+
+# Dependencies
+arch=("any")
+license=("GPL3")
+depends=("python" "dhclient")
+provides=("$pkgname")
+conflicts=("$pkgname")
+
+# Package contents
+source=('local-repo.conf'
+        'setup.py')
+sha256sums=('4ef07d3141a810b0692439975609b20e62ada7a0b8e60ccc553bcd2f03373579'
+            '597480ca27edddde25a784f6a61c81598049e29568dfc72ded74a082b37b2274')
+
+# Because PKGBUILD doesn't allow putting directories (or files in subdirectories)
+# in source array, we're going to link those in package function. For that, we need to
+# have reference to the directory containing the PKGBUILD, as per this post:
+# https://stackoverflow.com/a/246128
+PKGBUILDDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+prepare() {
+    cd "${srcdir}"
+    # Link the directories and files not listed in source array
+    ln -s $PKGBUILDDIR/{${pkgname//-/_},packages,PKGBUILD} .
+}
+
+package() {
+
+    cd "${srcdir}"
+
+    # Install the actual Python package
+    python setup.py install --prefix=/usr --root="$pkgdir" --optimize=1
+
+    # Copy over all of the current patchsets and package instructions
+    (cd "${srcdir}/packages" && find . -depth -type f | sed 's|^\.\/||' | while read -r file; do
+        install -Dm644 "$file" "${pkgdir}/usr/share/local-repo/${file}"
+    done)
+
+    # Create directory for keeping the local repository files
+    install -dm755 "${pkgdir}/var/cache/local-repo"
+
+    # Create directory for keeping the build logs
+    install -dm755 "${pkgdir}/var/log/local-repo-builds"
+
+}
