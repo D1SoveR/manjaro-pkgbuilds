@@ -1,0 +1,19 @@
+[Unit]
+Description=Checks local packages for updates, and rebuilds them if there are newer versions available
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/local-repo-manager update
+
+Nice=10
+
+ProtectKernelTunables=yes
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=true
+NoNewPrivileges=yes
+
+ProtectSystem=true
+ProtectHome=true
+PrivateTmp=true
+
+ReadWritePaths=/var/cache/local-repo /var/log/local-repo-builds

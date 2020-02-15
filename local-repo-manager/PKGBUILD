@@ -2,22 +2,29 @@
 
 # Base package info
 pkgname="local-repo-manager"
-pkgver=0.0.1
+pkgver=0.0.4
 pkgrel=1
 pkgdesc="Service capable of taking Manjaro packages, applying local patches and changes on top and building them into local repository."
 url="https://github.com/D1SoveR/manjaro-pkgbuilds"
 
-# Dependencies
 arch=("any")
+
+# Dependencies
 license=("GPL3")
-depends=("python" "dhclient")
+depends=("python" "git" "patch" "dhclient")
+makedepends=("python-setuptools")
 provides=("$pkgname")
 conflicts=("$pkgname")
+install="$pkgname.install"
 
 # Package contents
-source=('local-repo.conf'
+source=('local-repo-manager.service'
+        'local-repo-manager.timer'
+        'local-repo.conf'
         'setup.py')
-sha256sums=('4ef07d3141a810b0692439975609b20e62ada7a0b8e60ccc553bcd2f03373579'
+sha256sums=('bc7a8df164218b8e5b23eb457f23b18b5d1bd5f184ac1a8482847d3fded97264'
+            '50cb0085bb26a4c94558879b5fb22ef5e0495494f1b7893c0158ccb5d6cc6db5'
+            '4ef07d3141a810b0692439975609b20e62ada7a0b8e60ccc553bcd2f03373579'
             '597480ca27edddde25a784f6a61c81598049e29568dfc72ded74a082b37b2274')
 
 # Because PKGBUILD doesn't allow putting directories (or files in subdirectories)
@@ -32,17 +39,29 @@ prepare() {
     ln -s $PKGBUILDDIR/{${pkgname//-/_},packages,PKGBUILD} .
 }
 
+build() {
+    cd "${srcdir}"
+    python setup.py build
+}
+
 package() {
 
     cd "${srcdir}"
 
     # Install the actual Python package
-    python setup.py install --prefix=/usr --root="$pkgdir" --optimize=1
+    python setup.py install --prefix=/usr --root="$pkgdir" --optimize=1 --skip-build
 
     # Copy over all of the current patchsets and package instructions
     (cd "${srcdir}/packages" && find . -depth -type f | sed 's|^\.\/||' | while read -r file; do
         install -Dm644 "$file" "${pkgdir}/usr/share/local-repo/${file}"
     done)
+
+    # Copy the configuration file over
+    install -Dm644 "${srcdir}/local-repo.conf" "${pkgdir}/etc/local-repo.conf"
+
+    # Copy over systemd units for running local repository manager as a service
+    install -Dm644 "${srcdir}/local-repo-manager.service" "${pkgdir}/usr/lib/systemd/system/local-repo-manager.service"
+    install -Dm644 "${srcdir}/local-repo-manager.timer" "${pkgdir}/usr/lib/systemd/system/local-repo-manager.timer"
 
     # Create directory for keeping the local repository files
     install -dm755 "${pkgdir}/var/cache/local-repo"

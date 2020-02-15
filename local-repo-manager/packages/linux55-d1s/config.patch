@@ -1,8 +1,8 @@
 diff --git a/PKGBUILD b/PKGBUILD
-index 2b781ae..40a5fa8 100644
+index db7f7f8..71724de 100644
 --- a/PKGBUILD
 +++ b/PKGBUILD
-@@ -63,7 +63,8 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
+@@ -70,7 +70,8 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
          '0012-bootsplash.patch'
          '0013-bootsplash.patch'
          'zfs-fix.patch'
@@ -10,9 +10,9 @@ index 2b781ae..40a5fa8 100644
 +        'fsync.patch'
 +        'preempt.config')
  sha256sums=('a6fbd4ee903c128367892c2393ee0d9657b6ed3ea90016d4dc6f1f6da20b2330'
-             '49a9de13452eec4807a8b55d054318ac552625d4285bec74f3d669bb0eb3a074'
+             'cf640d75bdf4211446aa699a562c7bbd6d0360c6bc11e9ca22e8032de14697db'
              '759a46cd52f0f7267182c37126db497cffc65065de51ba4d26985b8cb664ba3d'
-@@ -104,7 +105,8 @@ sha256sums=('a6fbd4ee903c128367892c2393ee0d9657b6ed3ea90016d4dc6f1f6da20b2330'
+@@ -118,7 +119,8 @@ sha256sums=('a6fbd4ee903c128367892c2393ee0d9657b6ed3ea90016d4dc6f1f6da20b2330'
              '60e295601e4fb33d9bf65f198c54c7eb07c0d1e91e2ad1e0dd6cd6e142cb266d'
              '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef'
              '5d55bb51c3cade17dde2fec87a385604780afd117dbd01dfbb4b1b83f1ae2660'
@@ -22,12 +22,12 @@ index 2b781ae..40a5fa8 100644
  prepare() {
    cd "${srcdir}/linux-${_basekernel}"
  
-@@ -185,6 +187,9 @@ prepare() {
+@@ -206,6 +208,9 @@ prepare() {
    # set extraversion to pkgrel
    sed -ri "s|^(EXTRAVERSION =).*|\1 -${pkgrel}|" Makefile
  
 +  # apply config fragments
-+  KCONFIG_CONFIG="./.config" "[merge_script]" -m "./.config" "preempt.config"
++  KCONFIG_CONFIG="./.config" "[merge_script]" -m "./.config" "${srcdir}/preempt.config"
 +
    # don't run depmod on 'make install'. We'll do this ourselves in packaging
    sed -i '2iexit 0' scripts/depmod.sh

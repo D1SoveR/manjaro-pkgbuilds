@@ -26,26 +26,29 @@ def get_repo(repository_file):
 
 	versions = defaultdict(list)
 
-	with tarfile.open(repository_file, mode="r:xz") as tf:
-		for item in tf:
-			if item.isfile() and item.name.endswith("desc"):
-				with tf.extractfile(item) as fp:
-					desc_file = fp.read().decode("utf8")
-				name = None
-				version = None
-				for line in desc_file.splitlines():
-					if line == r"%NAME%":
-						name = False
-					elif line == r"%VERSION%":
-						version = False
-					elif name == False:
-						name = line
-					elif version == False:
-						version = line
-					if name and version:
-						break
-				versions[name].append(version)
-				if len(versions[name]) > 1:
-					versions[name].sort(pacman_newest_first)
+	try:
+		with tarfile.open(repository_file, mode="r:xz") as tf:
+			for item in tf:
+				if item.isfile() and item.name.endswith("desc"):
+					with tf.extractfile(item) as fp:
+						desc_file = fp.read().decode("utf8")
+					name = None
+					version = None
+					for line in desc_file.splitlines():
+						if line == r"%NAME%":
+							name = False
+						elif line == r"%VERSION%":
+							version = False
+						elif name == False:
+							name = line
+						elif version == False:
+							version = line
+						if name and version:
+							break
+					versions[name].append(version)
+					if len(versions[name]) > 1:
+						versions[name].sort(pacman_newest_first)
+	except FileNotFoundError:
+		versions = {}
 
 	return dict((name, tuple(versions)) for name, versions in sorted(versions.items()))

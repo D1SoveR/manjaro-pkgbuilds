@@ -1,0 +1,7 @@
+post_install() {
+	echo "To enable the weekly package update schedule, run 'systemctl enable --now local-repo-manager.timer' as root"
+}
+
+pre_remove() {
+	rm -rf var/log/local-repo-builds
+}
