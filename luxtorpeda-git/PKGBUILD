@@ -1,0 +1,47 @@
+# Maintainer: Mikołaj "D1SoveR" Banasik <d1sover@gmail.com>
+_pkg="luxtorpeda"
+pkgname="${_pkg}-git"
+pkgver=0.1.0.r143.e770a4f
+pkgrel=1
+
+pkgver() {
+  cd "$srcdir/$_pkg"
+  version_base="$(grep -oP '(?<=^version = ")[^"]+(?="$)' Cargo.toml)"
+  version_revision="$(printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)")"
+  echo "$version_base.$version_revision"
+}
+
+pkgdesc="Steam Play compatibility tool to run games using native Linux engines"
+url="https://luxtorpeda.gitlab.io/"
+license=('GPL2')
+
+arch=('i686' 'x86_64')
+depends=('openssl')
+optdepends=('steam: The Steam client')
+makedepends=('rust' 'git')
+
+source=('git+https://github.com/dreamer/luxtorpeda.git'
+      'size-optimisations.patch')
+sha256sums=('SKIP'
+            '6161875cd2fb3d98881c323872f74c8fbc730287273c0d4574fd1ac1f67388db')
+
+check() {
+  cd "$_pkg"
+  make test
+}
+
+prepare() {
+  cd "$_pkg"
+  patch -Np1 -i "$srcdir/size-optimisations.patch"
+}
+
+build() {
+  cd "$_pkg"
+  mkdir -p target/release
+  make luxtorpeda
+}
+
+package() {
+  cd "$_pkg"
+  make DESTDIR="$pkgdir" PREFIX=/usr install
+}
