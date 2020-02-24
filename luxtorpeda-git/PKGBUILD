@@ -15,15 +15,19 @@ pkgdesc="Steam Play compatibility tool to run games using native Linux engines"
 url="https://luxtorpeda.gitlab.io/"
 license=('GPL2')
 
+provides=("$_pkg")
+conflicts=("$_pkg")
 arch=('i686' 'x86_64')
 depends=('openssl')
 optdepends=('steam: The Steam client')
 makedepends=('rust' 'git')
 
 source=('git+https://github.com/dreamer/luxtorpeda.git'
-      'size-optimisations.patch')
+        'size-optimisations.patch'
+        'reproducible-build.patch')
 sha256sums=('SKIP'
-            '6161875cd2fb3d98881c323872f74c8fbc730287273c0d4574fd1ac1f67388db')
+            '6161875cd2fb3d98881c323872f74c8fbc730287273c0d4574fd1ac1f67388db'
+            'e97cf95dedcf60c97edb3a693052964e4ce6da795631ca5c9f04182462f67895')
 
 check() {
   cd "$_pkg"
