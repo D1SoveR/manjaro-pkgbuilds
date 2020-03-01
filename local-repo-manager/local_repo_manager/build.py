@@ -135,14 +135,8 @@ def build_package(repo, package_dir, destination_dir):
 			print("None of the build artifacts are newer than contents of the local repository, skipping...")
 			return
 
-		print("Building the package...")
+		print("Building the package and installing it within the container...")
 		subprocess.run(
-			RUN_AS_USER + ["/usr/bin/makepkg", "-sc"],
+			RUN_AS_USER + ["/usr/bin/makepkg", "-sci", "--noconfirm"],
 			cwd=build_dir, env=temp_env, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT
-		)
-
-		print("Installing the new packages in the container...")
-		subprocess.run(
-			["/usr/bin/pacman", "--needed", "--noconfirm", "-U"] + get_build_artifacts(destination_dir),
-			cwd=destination_dir, check=True, stdout=sys.stdout, stderr=subprocess.STDOUT
 		)

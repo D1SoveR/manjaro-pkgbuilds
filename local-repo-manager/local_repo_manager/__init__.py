@@ -152,6 +152,13 @@ def main():
 	# and shouldn't be run directly on the host system.
 	elif args.action == "build":
 
+		# We override the sudoers file within the container to allow the non-root user to
+		# use sudo for root operations without having to provide password (primarily for
+		# installing dependencies for makepkg)
+		print("Configuring sudo permissions...")
+		with open("/etc/sudoers", mode="wt", encoding="utf8") as fp:
+			print("ALL ALL=(ALL) NOPASSWD: ALL", file=fp)
+
 		# We're running the nspawn container without systemd init,
 		# so whatever the network interface is, it will need to be initialised and configured
 		# manually, via dhclient command.
