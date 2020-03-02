@@ -1,0 +1,132 @@
+diff --git a/block/genhd.c b/block/genhd.c
+index 703267865f14..fb35c85a7f42 100644
+--- a/block/genhd.c
++++ b/block/genhd.c
+@@ -84,6 +84,7 @@ unsigned int part_in_flight(struct request_queue *q, struct hd_struct *part)
+ 
+ 	return inflight;
+ }
++EXPORT_SYMBOL_GPL(part_in_flight);
+ 
+ void part_in_flight_rw(struct request_queue *q, struct hd_struct *part,
+ 		       unsigned int inflight[2])
+diff --git a/fs/btrfs/volumes.c b/fs/btrfs/volumes.c
+index 1c2a6e4b39da..8671c2bdced6 100644
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -13,6 +13,7 @@
+ #include <linux/raid/pq.h>
+ #include <linux/semaphore.h>
+ #include <linux/uuid.h>
++#include <linux/genhd.h>
+ #include <linux/list_sort.h>
+ #include "ctree.h"
+ #include "extent_map.h"
+@@ -29,6 +30,8 @@
+ #include "sysfs.h"
+ #include "tree-checker.h"
+ 
++#define BTRFS_RAID_1_10_MAX_MIRRORS 2
++
+ const struct btrfs_raid_attr btrfs_raid_array[BTRFS_NR_RAID_TYPES] = {
+ 	[BTRFS_RAID_RAID10] = {
+ 		.sub_stripes	= 2,
+@@ -5482,6 +5485,88 @@ int btrfs_is_parity_mirror(struct btrfs_fs_info *fs_info, u64 logical, u64 len)
+ 	return ret;
+ }
+ 
++/**
++ * bdev_get_queue_len - return rounded down in flight queue length of bdev
++ *
++ * @bdev: target bdev
++ */
++static uint32_t bdev_get_queue_len(struct block_device *bdev)
++{
++	struct hd_struct *bd_part = bdev->bd_part;
++	struct request_queue *rq = bdev_get_queue(bdev);
++
++	return part_in_flight(rq, bd_part);
++}
++
++/**
++ * guess_optimal - return guessed optimal mirror
++ *
++ * Optimal expected to be pid % num_stripes
++ *
++ * That's generally fine for spread load
++ * That are balancer based on queue length to device
++ *
++ * Basic ideas:
++ *  - Sequential read generate low amount of request
++ *    so if load of drives are equal, use pid % num_stripes balancing
++ *  - For mixed rotate/non-rotate mirrors, pick non-rotate as optimal
++ *    and repick if other dev have "significant" less queue length
++ *  - Repick optimal if queue length of other mirror are significantly less
++ */
++static int guess_optimal(struct map_lookup *map, int num, int optimal)
++{
++	int i;
++	/*
++	 * Spinning rust not like random request
++	 * Because of that rebalance are less aggressive
++	 */
++	uint32_t rq_len_overload = 8;
++	uint32_t qlen[2];
++	bool is_nonrot[2];
++	struct block_device *bdev;
++
++	/* That function supposed to work with up to 2 mirrors */
++	ASSERT(BTRFS_RAID_1_10_MAX_MIRRORS == 2);
++	ASSERT(BTRFS_RAID_1_10_MAX_MIRRORS == num);
++
++	/* Check accessible bdevs */
++	for (i = 0; i < 2; i++) {
++		bdev = map->stripes[i].dev->bdev;
++		/*
++		 * Don't bother with further computation
++		 * if only one of two bdevs are accessible
++		 */
++		if (!bdev)
++			return (i + 1) % 2;
++
++		qlen[i] = bdev_get_queue_len(bdev);
++		is_nonrot[i] = blk_queue_nonrot(bdev_get_queue(bdev));
++	}
++
++	/* For mixed case, pick non rotational dev as optimal */
++	if (is_nonrot[0] != is_nonrot[1]) {
++		if (is_nonrot[0])
++			optimal = 0;
++		else
++			optimal = 1;
++	} else {
++		/* For nonrot devices balancing can be aggressive */
++		if (is_nonrot[0])
++			rq_len_overload = 2;
++	}
++
++	/* Devices load at same level */
++	if (abs(qlen[0] - qlen[1]) <= rq_len_overload)
++		return optimal;
++
++	if (qlen[0] > qlen[1])
++		optimal = 1;
++	else
++		optimal = 0;
++
++	return optimal;
++}
++
+ static int find_live_mirror(struct btrfs_fs_info *fs_info,
+ 			    struct map_lookup *map, int first,
+ 			    int dev_replace_is_ongoing)
+@@ -5500,7 +5585,8 @@ static int find_live_mirror(struct btrfs_fs_info *fs_info,
+ 	else
+ 		num_stripes = map->num_stripes;
+ 
+-	preferred_mirror = first + current->pid % num_stripes;
++	preferred_mirror = first + guess_optimal(map, num_stripes,
++						 current->pid % num_stripes);
+ 
+ 	if (dev_replace_is_ongoing &&
+ 	    fs_info->dev_replace.cont_reading_from_srcdev_mode ==

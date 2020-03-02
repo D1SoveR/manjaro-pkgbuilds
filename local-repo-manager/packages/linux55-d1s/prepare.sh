@@ -15,7 +15,9 @@ fi
 # Copy over the following patches to apply to kernel:
 # * Patch to un-GPL some kernel symbols to make ZFS module buildable again
 # * Valve's fsync patch, for improved performance in Windows games
-cp $prepare_dir/{zfs-fix,fsync}.patch .
+# * Patch to ensure that in btrfs RAID 1 array with SSD and HDD, reads always go to SSD
+#   (see https://patchwork.kernel.org/project/linux-btrfs/list/?submitter=182469)
+cp $prepare_dir/{zfs-fix,fsync,btrfs-prefer-nonrotational}.patch .
 
 # Copy over the configuration fragment re-enabling fully preemptive kernel
 # (with the other patch in place we _can_ build ZFS module for one)

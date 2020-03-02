@@ -2,7 +2,7 @@
 
 # Base package info
 pkgname="local-repo-manager"
-pkgver=0.0.6
+pkgver=0.0.7
 pkgrel=1
 pkgdesc="Service capable of taking Manjaro packages, applying local patches and changes on top and building them into local repository."
 url="https://github.com/D1SoveR/manjaro-pkgbuilds"
