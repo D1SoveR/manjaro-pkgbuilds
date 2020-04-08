@@ -6,10 +6,10 @@ index 4c67853..c3a3e14 100644
  # Maintainer: Philip Müller <philm@manjaro.org>
  # Contributor: Helmut Stult <helmut[at]manjaro[dot]org>
  
--_linuxprefix=linux55
--_extramodules=extramodules-5.5-MANJARO
-+_linuxprefix=linux55-d1s
-+_extramodules=extramodules-5.5-D1S
+-_linuxprefix=linux56
+-_extramodules=extramodules-5.6-MANJARO
++_linuxprefix=linux56-d1s
++_extramodules=extramodules-5.6-D1S
  pkgbase=$_linuxprefix-spl_zfs
  pkgname=("$_linuxprefix-zfs")
  pkgver=0.8.3
@@ -17,7 +17,7 @@ index 4c67853..c3a3e14 100644
    make
  }
  
--package_linux55-zfs(){
+-package_linux56-zfs(){
 +packzfs(){
    pkgdesc='Kernel modules for the Zettabyte File System.'
    provides=("zfs=$pkgver")

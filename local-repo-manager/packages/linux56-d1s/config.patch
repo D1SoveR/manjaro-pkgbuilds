@@ -1,18 +1,18 @@
 diff --git a/PKGBUILD b/PKGBUILD
-index 76e4831..a7f217c 100644
+index 8674429..8cfc279 100644
 --- a/PKGBUILD
 +++ b/PKGBUILD
-@@ -69,7 +69,8 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
+@@ -55,7 +55,8 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
          '0013-bootsplash.patch'
          'zfs-fix.patch'
          'fsync.patch'
 -        'btrfs-prefer-nonrotational.patch')
 +        'btrfs-prefer-nonrotational.patch'
 +        'preempt.config')
- sha256sums=('a6fbd4ee903c128367892c2393ee0d9657b6ed3ea90016d4dc6f1f6da20b2330'
-             '5aabcb81dcea06dca5c9daf739a0309eaf285365150f27419e0c00c5874c8511'
-             '62cffd4cc10eb86de05c1a9a332c98289789ec18294a6331a6e42c9633a6411c'
-@@ -116,7 +117,8 @@ sha256sums=('a6fbd4ee903c128367892c2393ee0d9657b6ed3ea90016d4dc6f1f6da20b2330'
+ sha256sums=('e342b04a2aa63808ea0ef1baab28fc520bd031ef8cf93d9ee4a31d4058fcb622'
+             'a677aa98df0fc907314130b511feef3108717d98c405c98a51dde4e06d1c492c'
+             '560c296946217372ea4357a4eea1a062e9cb8e21acb40fe842259baa18aa8da9'
+@@ -89,7 +90,8 @@ sha256sums=('e342b04a2aa63808ea0ef1baab28fc520bd031ef8cf93d9ee4a31d4058fcb622'
              '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef'
              '5d55bb51c3cade17dde2fec87a385604780afd117dbd01dfbb4b1b83f1ae2660'
              '2d9260b80b43bbd605cf420d6bd53aa7262103dfd77196ba590ece5600b6dc0d'
@@ -22,7 +22,7 @@ index 76e4831..a7f217c 100644
  prepare() {
    cd "${srcdir}/linux-${_basekernel}"
  
-@@ -203,6 +205,9 @@ prepare() {
+@@ -159,6 +161,9 @@ prepare() {
    # set extraversion to pkgrel
    sed -ri "s|^(EXTRAVERSION =).*|\1 -${pkgrel}|" Makefile
  

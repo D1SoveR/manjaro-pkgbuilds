@@ -1,21 +1,21 @@
 diff --git a/PKGBUILD b/PKGBUILD
-index 217af89..76e4831 100644
+index b945466..8674429 100644
 --- a/PKGBUILD
 +++ b/PKGBUILD
-@@ -7,9 +7,9 @@
+@@ -6,9 +6,9 @@
+ # Maintainer: Jonathon Fernyhough (i686) <jonathon@manjaro.org>
  # Contributor: Helmut Stult <helmut[at]manjaro[dot]org>
  
- 
--pkgbase=linux55
--pkgname=('linux55' 'linux55-headers')
+-pkgbase=linux56
+-pkgname=('linux56' 'linux56-headers')
 -_kernelname=-MANJARO
-+pkgbase=linux55-d1s
++pkgbase=linux56-d1s
 +pkgname=("${pkgbase}" "${pkgbase}-headers")
 +_kernelname=-D1S
- _basekernel=5.5
- _basever=55
- _aufs=20200203
-@@ -66,7 +66,10 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
+ _basekernel=5.6
+ _basever=56
+ _aufs=20200302
+@@ -52,7 +52,10 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
          '0010-bootsplash.patch'
          '0011-bootsplash.patch'
          '0012-bootsplash.patch'
@@ -24,10 +24,10 @@ index 217af89..76e4831 100644
 +        'zfs-fix.patch'
 +        'fsync.patch'
 +        'btrfs-prefer-nonrotational.patch')
- sha256sums=('a6fbd4ee903c128367892c2393ee0d9657b6ed3ea90016d4dc6f1f6da20b2330'
-             '5aabcb81dcea06dca5c9daf739a0309eaf285365150f27419e0c00c5874c8511'
-             '62cffd4cc10eb86de05c1a9a332c98289789ec18294a6331a6e42c9633a6411c'
-@@ -110,7 +113,10 @@ sha256sums=('a6fbd4ee903c128367892c2393ee0d9657b6ed3ea90016d4dc6f1f6da20b2330'
+ sha256sums=('e342b04a2aa63808ea0ef1baab28fc520bd031ef8cf93d9ee4a31d4058fcb622'
+             'a677aa98df0fc907314130b511feef3108717d98c405c98a51dde4e06d1c492c'
+             '560c296946217372ea4357a4eea1a062e9cb8e21acb40fe842259baa18aa8da9'
+@@ -83,7 +86,10 @@ sha256sums=('e342b04a2aa63808ea0ef1baab28fc520bd031ef8cf93d9ee4a31d4058fcb622'
              'e9f22cbb542591087d2d66dc6dc912b1434330ba3cd13d2df741d869a2c31e89'
              '27471eee564ca3149dd271b0817719b5565a9594dc4d884fe3dc51a5f03832bc'
              '60e295601e4fb33d9bf65f198c54c7eb07c0d1e91e2ad1e0dd6cd6e142cb266d'
@@ -39,7 +39,7 @@ index 217af89..76e4831 100644
  prepare() {
    cd "${srcdir}/linux-${_basekernel}"
  
-@@ -166,6 +172,11 @@ prepare() {
+@@ -122,6 +128,11 @@ prepare() {
    # use git-apply to add binary files
    git apply -p1 < "${srcdir}/0013-bootsplash.patch"
  
@@ -49,27 +49,36 @@ index 217af89..76e4831 100644
 +  patch -Np1 -i "${srcdir}/btrfs-prefer-nonrotational.patch"
 +
    # add aufs5 support
-   patch -Np1 -i "${srcdir}/aufs5.5-${_aufs}.patch"
+   patch -Np1 -i "${srcdir}/aufs5.x-rcN-${_aufs}.patch"
    patch -Np1 -i "${srcdir}/aufs5-base.patch"
-@@ -217,7 +228,7 @@ build() {
+@@ -173,7 +184,7 @@ build() {
    make ${MAKEFLAGS} LOCALVERSION= bzImage modules
  }
  
--package_linux55() {
+-package_linux56() {
 +packbase() {
    pkgdesc="The ${pkgbase/linux/Linux} kernel and modules"
    depends=('coreutils' 'linux-firmware' 'kmod' 'mkinitcpio>=27')
    optdepends=('crda: to set the correct wireless channels of your country')
-@@ -266,7 +277,7 @@ package_linux55() {
+@@ -195,7 +206,7 @@ package_linux56() {
+ 
+   # Used by mkinitcpio to name the kernel
+   echo "${pkgbase}" | install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_kernver}/pkgbase"
+-  echo "${_basekernel}-${CARCH}" | install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_kernver}/kernelbase"
++  echo "${_basekernel}-${_kernelname}-${CARCH}" | install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_kernver}/kernelbase"
+ 
+   # add kernel version
+   if [ "${CARCH}" = "x86_64" ]; then
+@@ -222,7 +233,7 @@ package_linux56() {
    install -Dt "${pkgdir}/usr/lib/modules/${_kernver}/build" -m644 vmlinux
  }
  
--package_linux55-headers() {
+-package_linux56-headers() {
 +packheaders() {
    pkgdesc="Header files and scripts for building modules for ${pkgbase/linux/Linux} kernel"
    provides=("linux-headers=$pkgver")
  
-@@ -338,4 +349,13 @@ package_linux55-headers() {
+@@ -294,4 +305,13 @@ package_linux56-headers() {
    done < <(find "${_builddir}/scripts" -type f -perm -u+w -print0 2>/dev/null)
  }
  

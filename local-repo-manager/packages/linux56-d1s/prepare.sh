@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# Clone Manjaro's PKGBUILD for Linux 5.5 kernel
-git clone --depth 1 https://gitlab.manjaro.org/packages/core/linux55.git .
+# Clone Manjaro's PKGBUILD for Linux 5.6 kernel
+git clone --depth 1 https://gitlab.manjaro.org/packages/core/linux56.git .
 
 # Check for the merge config script (needed to apply the configuration fragments),
 # and throw an error if it can't be found
