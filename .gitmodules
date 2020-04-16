@@ -4,3 +4,6 @@
 [submodule "luxtorpeda-git"]
 	path = luxtorpeda-git
 	url = https://aur.archlinux.org/luxtorpeda-git.git
+[submodule "kinect-audio-setup"]
+	path = kinect-audio-setup
+	url = https://aur.archlinux.org/kinect-audio-setup.git
